@@ -1,0 +1,22 @@
+[package]
+name = "chain_from_last"
+version = "0.1.0"
+
+license = "Apache-2.0"
+repository = "https://github.com/yogevm15/chain_from_last"
+documentation = "https://docs.rs/chain_from_last/"
+authors = ["yogevm15"]
+readme = "README.md"
+
+description = "Iterator adaptor for chaining from last item."
+keywords = ["iterator", "chain", "data-structures"]
+
+categories = ["algorithms", "rust-patterns", "no-std", "no-std::no-alloc"]
+edition = "2021"
+
+rust-version = "1.63.0"
+
+[lib]
+bench = false
+
+[dependencies]
