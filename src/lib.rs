@@ -1,9 +1,9 @@
 #![no_std]
-/// An iterator adaptor that chains the iterator with an iterator built from the last item.
-///
-/// See [`.chain_from_last(...)`](ChainFromLastExt::chain_from_last) for more information.
-#[must_use = "Iterators adaptors are lazy and do nothing unless consumed"]
-pub enum ChainFromLast<A: Iterator + Sized, B, F> {
+#![doc = include_str!("../README.md")]
+extern crate alloc;
+
+#[doc(hidden)]
+enum ChainFromLastState<A: Iterator + Sized, B, F> {
     A {
         a: A,
         f: Option<F>,
@@ -11,6 +11,13 @@ pub enum ChainFromLast<A: Iterator + Sized, B, F> {
     },
     B(B),
 }
+
+/// An iterator adaptor that chains the iterator with an iterator built from the last item.
+///
+/// See [`.chain_from_last(...)`](ChainFromLastExt::chain_from_last) for more information.
+#[must_use = "Iterators adaptors are lazy and do nothing unless consumed"]
+#[repr(transparent)]
+pub struct ChainFromLast<A: Iterator + Sized, B, F>(ChainFromLastState<A, B, F>);
 
 pub trait ChainFromLastExt: Iterator {
     /// Returns an iterator adaptor that chains an iterator with iterator built
@@ -21,9 +28,9 @@ pub trait ChainFromLastExt: Iterator {
     /// ```
     /// # use chain_from_last::ChainFromLastExt;
     /// let words: Vec<_> = "lorem ipsum dolor;sit;amet"
-    ///             .split(" ")
-    ///             .chain_from_last(|l| l.split(";"))
-    ///             .collect();
+    ///     .split(" ")
+    ///     .chain_from_last(|l| l.split(";"))
+    ///     .collect();
     ///
     ///  assert_eq!(words, vec!["lorem", "ipsum", "dolor", "sit", "amet"]);
     /// ```
@@ -34,11 +41,11 @@ pub trait ChainFromLastExt: Iterator {
     where
         Self: Sized,
     {
-        ChainFromLast::A {
+        ChainFromLast(ChainFromLastState::A {
             a: self,
             f: Some(f),
             prev: None,
-        }
+        })
     }
 }
 
@@ -50,8 +57,8 @@ impl<A: Iterator + Sized, B: Iterator<Item = A::Item>, F: FnOnce(A::Item) -> B> 
     type Item = A::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            ChainFromLast::A { a, f, prev } => {
+        match &mut self.0 {
+            ChainFromLastState::A { a, f, prev } => {
                 // get the previous item or yield the first item if exists.
                 let prev_item = prev.take().or_else(|| a.next())?;
 
@@ -59,14 +66,14 @@ impl<A: Iterator + Sized, B: Iterator<Item = A::Item>, F: FnOnce(A::Item) -> B> 
 
                 // if no more items call the callback with the last item.
                 if next.is_none() {
-                    *self = Self::B(f.take().unwrap()(prev_item));
+                    *self = Self(ChainFromLastState::B(f.take().unwrap()(prev_item)));
                     return self.next();
                 }
 
                 *prev = next;
                 Some(prev_item)
             }
-            ChainFromLast::B(b) => b.next(),
+            ChainFromLastState::B(b) => b.next(),
         }
     }
 }
